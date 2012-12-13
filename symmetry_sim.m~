@@ -35,7 +35,7 @@ function varargout = symmetry_sim(varargin)
 %   gray_scale : max index for 0...255 grayscale
 %   sqsupsq_phase_rad : phase offset (rads) of 2nd checkerboard
 %   
-%--- End main parameter descriptions
+
 
 % Last Modified by GUIDE v2.5 09-Dec-2010 10:58:46
 
