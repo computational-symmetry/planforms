@@ -22,10 +22,16 @@ function pf = make_planform( varargin )
 %
 %   Takes a planform structure or no input.
 %
+%   These patterns were inspired by this paper:
+%   
+%   Dionne, B., Silber, M., & Skeldon, A.C. (1997). Stability results for
+%       steady, spatially periodic planforms. Nonlinearity, 10, 321-352. 
+%       doi:10.1088/0951-7715/10/2/002.
+%
 %   Use cases:
 %
 %   >> pf1 = make_planform();
-%   Assigning default value of img_pix = 600
+%   Assigning default value of img_pix = 800
 %   Assigning default value of cyc_per_img = 12
 %   Assigning default value of gaussian_space_constant = 1800
 %   Assigning default value of gray_scale = 255
@@ -33,8 +39,8 @@ function pf = make_planform( varargin )
 %   Assigning default value of base_angle_offset = 0
 %   Assigning default value of angle_rad = 3.217506e-01
 %   Assigning default value of phase_rad = 0
-%   Assigning default value of class_type = 4
-%   >> imagesc( pf1.img.P1234 ); colormap( gray );
+%   Assigning default value of class_type = 6
+%   >> imagesc( pf1.img.P123456 ); colormap( gray );
 %
 %   >> pf2 = pf1;
 %   >> pf2.phase_rad = pi; % make super-square
@@ -45,8 +51,9 @@ function pf = make_planform( varargin )
 % History
 % 
 % 130107 rog adapted from symmetry_sim.m, cleaned up code, documentation
-%
-
+% 130110 rog added citation to Dionne et al. 97. Fixed class 6. Also, made
+%      inputs more flexible. Can specify existing planform structure, or
+%      'field_name', field_value pairs.
 
 %--------------------------------------------------------------------------
 % Known bugs, problems, feature wish list
@@ -57,17 +64,18 @@ function pf = make_planform( varargin )
 
 
 %----   Check parameter values
+pf = check_planform_params( varargin );
 
-if nargin > 1
-    error('Too many input arguments.');
-end
-
-if nargin == 0
-    pf = check_planform_params();
-else
-    pf = varargin{1};
-    pf = check_planform_params( pf );    
-end
+% if nargin > 1
+%     error('Too many input arguments.');
+% end
+% 
+% if nargin == 0
+%     pf = check_planform_params();
+% else
+%     pf = varargin{1};
+%     pf = check_planform_params( pf );    
+% end
 
 %----   Generate based on class type
 switch pf.class_type
@@ -86,9 +94,16 @@ switch pf.class_type
         
         C3 = grating( pf.X, pf.Y, pf.ampl, pf.phase_rad, pf.base_angle_offset + comp_axis(3) + comp_offset(3), pf.cyc_pix );
         C4 = grating( pf.X, pf.Y, pf.ampl, pf.phase_rad, pf.base_angle_offset + comp_axis(4) + comp_offset(4), pf.cyc_pix );
-        
+   
+        C5 = zeros( size( C1 ) );
+        C6 = zeros( size( C1 ) );
+
         % Create grayscale images as sums of components, gray-scaled
-        
+
+        P123456 = ((C1+C2+C3+C4+C5+C6).*pf.gaussian_mask)/6;
+        P123456=(P123456*pf.gray_scale/2) + ones( size(P123456) )*pf.gray_scale/2;
+        img.P123456 = P123456;
+
         P1234=((C1+C2+C3+C4).*pf.gaussian_mask)/4;
         P1234=(P1234*pf.gray_scale/2) + ones( size(P1234) )*pf.gray_scale/2;
         img.P1234 = P1234;
@@ -100,12 +115,15 @@ switch pf.class_type
         P34 = (C3 + C4).*pf.gaussian_mask/2;
         P34=(P34*pf.gray_scale/2) + ones( size(P34) )*pf.gray_scale/2;
         img.P34 = P34;
-                
+                        
     case 6
         % Origins of 3, 6 component patterns are offset by 2*pi/3
         pair_angle = 2*pi/3;
         comp_axis  = [ 0 pair_angle pair_angle 0 2*pair_angle 2*pair_angle ];
+        comp_axis  = [ 0 0 pair_angle pair_angle 2*pair_angle 2*pair_angle ];
+        
         comp_offset = [ pf.angle_rad pf.angle_rad -pf.angle_rad -pf.angle_rad pf.angle_rad -pf.angle_rad];
+        comp_offset = [ pf.angle_rad -pf.angle_rad pf.angle_rad -pf.angle_rad pf.angle_rad -pf.angle_rad ];
                 
         % phase_rad argument doesn't make sense with n=3, 6?
         C1 = grating( pf.X, pf.Y, pf.ampl, 0, pf.base_angle_offset + comp_axis(1) + comp_offset(1), pf.cyc_pix );
@@ -122,6 +140,10 @@ switch pf.class_type
         P123456 = ((C1+C2+C3+C4+C5+C6).*pf.gaussian_mask)/6;
         P123456=(P123456*pf.gray_scale/2) + ones( size(P123456) )*pf.gray_scale/2;
         img.P123456 = P123456;
+
+        P1234=((C1+C2+C3+C4).*pf.gaussian_mask)/4;
+        P1234=(P1234*pf.gray_scale/2) + ones( size(P1234) )*pf.gray_scale/2;
+        img.P1234 = P1234;
         
         P12 = (C1 + C2).*pf.gaussian_mask/2;
         %scale=max(max(P12));
@@ -167,6 +189,14 @@ C4=C4.*pf.gaussian_mask;
 C4=(C4*pf.gray_scale/2) + ones( size(C4) )*pf.gray_scale/2;
 img.C4 = C4;
 
+C5=C5.*pf.gaussian_mask;
+C5=(C5*pf.gray_scale/2) + ones( size(C5) )*pf.gray_scale/2;
+img.C5 = C5;
+
+C6=C6.*pf.gaussian_mask;
+C6=(C6*pf.gray_scale/2) + ones( size(C6) )*pf.gray_scale/2;
+img.C6 = C6;
+
 %----   Add img to planform struct
 pf.img = img;
 
@@ -175,21 +205,74 @@ return;
 
 
 %--------------------------------------------------------------------------
-function pf = check_planform_params( varargin )
+function pf = check_planform_params( args )
+
+nargs = length( args );
 
 %----   Create data structure with default values for comparison
 d = planform_assign_defaults(); 
+pf = d;
 
-if nargin == 0
-    pf = [];
-end
-
-if nargin == 1
-    arg = varargin{1};
+% planform structure, 'field_name', field_value pairs
+if nargs >= 3
+    arg = args{1};
     if ~isstruct( arg ) % input not a structure
         error('Input not a data structure.\n');
     end
     pf = arg;
+    
+    if mod( nargs-1, 2 ) % odd
+        error('Number of input arguments must be odd.')
+    end
+    
+    % presumes 'field_name', field_value pairs
+    for i = 2:2:(nargs-1)
+        thisarg1 = char( args{i} );
+        thisarg2 = args{i+1};
+        if ~isfield( d, thisarg1 );
+            error('Argument not a recognized field name.');
+        else % assign to data structure fields
+            if ~isnumeric( thisarg2 )
+                thisarg2 = str2num( thisarg2 );
+            end
+            eval( ['pf.' thisarg1 '=' num2str( thisarg2 ) ] );
+        end
+    end % for i
+end
+
+% 'field_name', field_value pair
+if nargs == 2
+    for i = 1:2:(nargs-1)
+        thisarg1 = char( args{i} );
+        thisarg2 = args{i+1};
+        if ~isfield( d, thisarg1 );
+            error('Argument not a recognized field name.');
+        else
+            if ~isnumeric( thisarg2 )
+                thisarg2 = str2num( thisarg2 );
+            end
+            eval( ['pf.' thisarg1 '=' num2str( thisarg2 ) ] );
+            %pf.thisarg1 = thisarg2; % assign to data structure
+        end
+    end % for i
+end
+
+if nargs == 1
+    arg = args{1};
+    
+    % first argument is empty no input or a structure
+    if isempty( arg )
+        pf = [];
+    else
+        if ~isstruct( arg ) % input not a structure
+            error('Input not a data structure.');
+        end
+        pf = arg;
+    end
+end
+
+if nargs == 0
+    pf = [];
 end
 
 %----   Pixels in image (img_pix x img_pix)
@@ -264,12 +347,12 @@ return
 %--------------------------------------------------------------------------
 function defaults = planform_assign_defaults()
 
-defaults.img_pix                 = 600;
-defaults.cyc_per_img             = 12;
+defaults.img_pix                 = 1000;
+defaults.cyc_per_img             = 24;
 defaults.gaussian_space_constant = 3 * defaults.img_pix; % No edge blurring
 defaults.ampl                    = 1;
 defaults.base_angle_offset       = 0;
-defaults.angle_rad               = atan2(1,3); % 3,1 lattice
+defaults.angle_rad               = atan2(1,3); % 2,3 lattice
 defaults.gray_scale              = 255;
 defaults.phase_rad               = 0; % Square; pi for super square with 3:1 lattice
 defaults.class_type              = 4; % 4 components
@@ -288,7 +371,6 @@ function g = make_gaussian_mask( pf )
 g = exp(-((x .^ 2) + (y .^ 2)) / (pf.gaussian_space_constant ^ 2));
 return
 %--------------------------------------------------------------------------
-
 
 
 
